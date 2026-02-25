@@ -1,5 +1,5 @@
-// Aljorany Pro - Universal Excel Reader
-// يدعم جميع صيغ Excel: xlsx, xls, xlsm, xlsb, xltx, xltm, xlam, csv, txt, prn, dif, slk, dbf, ods, fods, uos, html, htm
+// Aljorany Pro - Universal Excel Reader (Fixed)
+// يدعم جميع صيغ Excel مع إظهار كامل السطر
 
 class AljoranyPro {
     constructor() {
@@ -8,29 +8,12 @@ class AljoranyPro {
         this.isProcessing = false;
         this.currentTheme = 'dark';
         this.searchFilter = 'all';
+        this.showFullRow = true;
         
-        // جميع امتدادات Excel المدعومة
         this.supportedExtensions = [
-            // Excel Native
-            'xlsx', 'xls', 'xlsm', 'xlsb', 
-            // Excel Templates
-            'xltx', 'xltm', 'xlt',
-            // Excel Add-ins
-            'xlam', 'xla',
-            // Excel Binary
-            'xlsb',
-            // Excel 2003 XML
-            'xml',
-            // CSV and Text
-            'csv', 'txt', 'prn',
-            // Other formats
-            'dif', 'slk', 'dbf',
-            // OpenDocument
-            'ods', 'fods', 'uos',
-            // HTML
-            'html', 'htm',
-            // Numbers (Apple)
-            'numbers'
+            'xlsx', 'xls', 'xlsm', 'xlsb', 'xltx', 'xltm', 'xlt',
+            'xlam', 'xla', 'xml', 'csv', 'txt', 'prn', 'dif', 
+            'slk', 'dbf', 'ods', 'fods', 'uos', 'html', 'htm', 'numbers'
         ];
         
         this.initElements();
@@ -155,7 +138,7 @@ class AljoranyPro {
         const validFiles = Array.from(files).filter(file => {
             const isValid = this.isValidExtension(file.name);
             if (!isValid) {
-                this.showToast(`⚠️ ${file.name}: الصيغة غير مدعومة`, 'warning');
+                this.showToast('⚠️ ' + file.name + ': الصيغة غير مدعومة', 'warning');
             }
             return isValid;
         });
@@ -176,10 +159,12 @@ class AljoranyPro {
             const file = validFiles[i];
             
             try {
-                const progress = ((i + 1) / validFiles.length) * 100;
+                const progress = ((i + 0.5) / validFiles.length) * 100;
                 this.updateProgress(progress);
                 
-                const data = await this.readExcelFile(file);
+                const data = await this.readFile(file);
+                
+                this.updateProgress(((i + 1) / validFiles.length) * 100);
                 
                 if (data && data.length > 0) {
                     const columns = Object.keys(data[0]);
@@ -200,11 +185,11 @@ class AljoranyPro {
                     
                     this.addFileToList(file, data.length);
                 } else {
-                    this.showToast(`⚠️ ${file.name}: الملف فارغ أو لا يحتوي على بيانات`, 'warning');
+                    this.showToast('⚠️ ' + file.name + ': الملف فارغ', 'warning');
                 }
             } catch (error) {
-                console.error('Error processing file:', error);
-                this.showToast(`❌ خطأ في معالجة ${file.name}: ${error.message}`, 'error');
+                console.error('Error:', error);
+                this.showToast('❌ خطأ في ' + file.name + ': ' + error.message, 'error');
             }
         }
         
@@ -218,7 +203,7 @@ class AljoranyPro {
         this.isProcessing = false;
         
         if (processedCount > 0) {
-            this.showToast(`✅ تم استيراد ${processedCount} ملف بنجاح`, 'success');
+            this.showToast('✅ تم استيراد ' + processedCount + ' ملف', 'success');
             this.statsBar.style.display = 'flex';
             this.searchContainer.classList.add('show');
             this.emptyState.style.display = 'none';
@@ -227,81 +212,71 @@ class AljoranyPro {
         }
     }
     
-    readExcelFile(file) {
+    readFile(file) {
         return new Promise((resolve, reject) => {
-            const reader = new FileReader();
             const ext = this.getFileExtension(file.name);
+            const reader = new FileReader();
             
             reader.onload = (e) => {
                 try {
-                    let data;
                     let workbook;
+                    let data = e.target.result;
                     
-                    // Handle different file types
                     if (ext === 'csv' || ext === 'txt' || ext === 'prn') {
-                        // For text-based files, read as text
-                        const text = e.target.result;
-                        workbook = XLSX.read(text, { type: 'string', raw: true });
+                        workbook = XLSX.read(data, { 
+                            type: 'string',
+                            raw: true,
+                            cellDates: true
+                        });
                     } else if (ext === 'html' || ext === 'htm') {
-                        // For HTML files
-                        const html = e.target.result;
-                        workbook = XLSX.read(html, { type: 'string' });
+                        workbook = XLSX.read(data, { 
+                            type: 'string',
+                            cellDates: true
+                        });
                     } else if (ext === 'dbf') {
-                        // For DBF files, try to read as array
-                        data = new Uint8Array(e.target.result);
-                        workbook = XLSX.read(data, { type: 'array' });
+                        const dbfData = new Uint8Array(data);
+                        workbook = XLSX.read(dbfData, { 
+                            type: 'array',
+                            cellDates: true
+                        });
                     } else {
-                        // For binary Excel files (xlsx, xls, xlsm, xlsb, etc.)
-                        data = new Uint8Array(e.target.result);
-                        
-                        // Determine the correct type for XLSX
-                        const opts = {
+                        const binaryData = new Uint8Array(data);
+                        workbook = XLSX.read(binaryData, { 
                             type: 'array',
                             cellFormula: false,
                             cellHTML: false,
                             cellText: true,
+                            cellDates: true,
                             raw: true
-                        };
-                        
-                        // Special handling for xlsb
-                        if (ext === 'xlsb') {
-                            opts.bookType = 'xlsb';
-                        }
-                        
-                        workbook = XLSX.read(data, opts);
+                        });
                     }
                     
-                    // Get the first sheet
-                    const firstSheetName = workbook.SheetNames[0];
-                    if (!firstSheetName) {
-                        reject(new Error('الملف لا يحتوي على أوراق عمل'));
+                    if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+                        reject(new Error('الملف لا يحتوي على بيانات'));
                         return;
                     }
                     
-                    const worksheet = workbook.Sheets[firstSheetName];
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                     
-                    // Convert to JSON with options
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {
                         defval: '',
                         blankrows: false,
-                        raw: false, // Convert all values to strings
-                        dateNF: 'yyyy-mm-dd' // Date format
+                        raw: false,
+                        dateNF: 'yyyy-mm-dd'
                     });
                     
-                    // Clean data
                     const cleanedData = this.cleanData(jsonData);
                     
                     resolve(cleanedData);
+                    
                 } catch (error) {
-                    console.error('Parse error:', error);
-                    reject(new Error(`فشل قراءة الملف: ${error.message}`));
+                    reject(new Error('فشل قراءة الملف: ' + error.message));
                 }
             };
             
             reader.onerror = () => reject(new Error('فشل قراءة الملف'));
             
-            // Choose read method based on file type
-            if (ext === 'csv' || ext === 'txt' || ext === 'prn' || ext === 'html' || ext === 'htm') {
+            if (['csv', 'txt', 'prn', 'html', 'htm'].includes(ext)) {
                 reader.readAsText(file);
             } else {
                 reader.readAsArrayBuffer(file);
@@ -310,36 +285,33 @@ class AljoranyPro {
     }
     
     cleanData(jsonData) {
-        // Remove empty rows
-        const filtered = jsonData.filter(row => {
-            return Object.values(row).some(val => 
-                val !== '' && val !== null && val !== undefined && 
-                String(val).trim() !== ''
-            );
-        });
-        
-        // Clean each row
-        return filtered.map(row => {
-            const cleanRow = {};
-            Object.entries(row).forEach(([key, value]) => {
-                if (value !== '' && value !== null && value !== undefined) {
-                    // Convert to string and trim
-                    let cleanValue = String(value).trim();
-                    
-                    // Remove extra whitespace
-                    cleanValue = cleanValue.replace(/\s+/g, ' ');
-                    
-                    if (cleanValue !== '') {
-                        cleanRow[key] = cleanValue;
+        return jsonData
+            .filter(row => {
+                const values = Object.values(row);
+                return values.some(val => {
+                    if (val === null || val === undefined) return false;
+                    const str = String(val).trim();
+                    return str !== '' && str !== 'null' && str !== 'undefined';
+                });
+            })
+            .map(row => {
+                const cleanRow = {};
+                Object.entries(row).forEach(([key, value]) => {
+                    if (value !== null && value !== undefined) {
+                        let cleanValue = String(value).trim();
+                        cleanValue = cleanValue.replace(/\s+/g, ' ');
+                        if (cleanValue !== '' && cleanValue !== 'null' && cleanValue !== 'undefined') {
+                            cleanRow[key] = cleanValue;
+                        }
                     }
-                }
-            });
-            return cleanRow;
-        }).filter(row => Object.keys(row).length > 0);
+                });
+                return cleanRow;
+            })
+            .filter(row => Object.keys(row).length > 0);
     }
     
     addFileToList(file, rowCount) {
-        const fileId = 'file-' + Date.now() + Math.random();
+        const fileId = 'file-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
         const ext = this.getFileExtension(file.name).toUpperCase();
         
         const fileItem = document.createElement('div');
@@ -348,11 +320,15 @@ class AljoranyPro {
         fileItem.innerHTML = `
             <div class="file-icon">${this.getFileIcon(ext)}</div>
             <div class="file-info">
-                <div class="file-name">${file.name}</div>
-                <div class="file-meta">${this.formatFileSize(file.size)} • ${rowCount.toLocaleString()} صف • ${ext}</div>
+                <div class="file-name" title="${file.name}">${file.name}</div>
+                <div class="file-meta">${this.formatFileSize(file.size)} • ${rowCount.toLocaleString()} صف</div>
             </div>
-            <button class="file-remove" onclick="app.removeFile('${fileId}', '${file.name}')">✕</button>
+            <button class="file-remove" title="حذف الملف">✕</button>
         `;
+        
+        fileItem.querySelector('.file-remove').addEventListener('click', () => {
+            this.removeFile(fileId, file.name);
+        });
         
         this.fileList.appendChild(fileItem);
         this.fileList.classList.add('show');
@@ -384,6 +360,7 @@ class AljoranyPro {
             this.resultsContainer.classList.remove('show');
             this.emptyState.style.display = 'block';
             this.statsBar.style.display = 'none';
+            this.currentResults = [];
         }
         
         this.updateStats();
@@ -396,7 +373,6 @@ class AljoranyPro {
     }
     
     updateStats() {
-        const fileCount = this.filesData.size;
         let totalRows = 0;
         let maxCols = 0;
         
@@ -405,7 +381,7 @@ class AljoranyPro {
             maxCols = Math.max(maxCols, file.colCount);
         });
         
-        this.statFiles.textContent = fileCount;
+        this.statFiles.textContent = this.filesData.size;
         this.statRows.textContent = totalRows.toLocaleString();
         this.statCols.textContent = maxCols;
         this.statResults.textContent = this.currentResults.length;
@@ -424,13 +400,18 @@ class AljoranyPro {
             return;
         }
         
-        const searchTerms = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+        const searchTerms = searchTerm.toLowerCase()
+            .split(/\s+/)
+            .filter(t => t.length > 0);
+        
         this.currentResults = [];
         let resultId = 0;
         
         this.filesData.forEach((fileData, fileName) => {
             fileData.data.forEach((row, rowIndex) => {
-                const rowText = Object.values(row).join(' ').toLowerCase();
+                const rowValues = Object.values(row);
+                const rowText = rowValues.join(' ').toLowerCase();
+                
                 let matches = false;
                 let matchType = '';
                 
@@ -451,11 +432,13 @@ class AljoranyPro {
                     
                     Object.entries(row).forEach(([key, value]) => {
                         const valueLower = value.toLowerCase();
-                        const isMatch = searchTerms.some(term => valueLower.includes(term));
+                        const isMatch = searchTerms.some(term => 
+                            valueLower.includes(term)
+                        );
                         
                         if (isMatch) {
                             matchedFields.push({ key, value, highlight: true });
-                        } else if (value) {
+                        } else {
                             otherFields.push({ key, value, highlight: false });
                         }
                     });
@@ -465,9 +448,10 @@ class AljoranyPro {
                         fileName,
                         rowNumber: rowIndex + 2,
                         matchedFields,
-                        otherFields: otherFields.slice(0, 4),
+                        otherFields,
                         allFields: row,
-                        matchType
+                        matchType,
+                        fullRowText: rowValues.join(' | ')
                     });
                 }
             });
@@ -479,12 +463,12 @@ class AljoranyPro {
         if (this.currentResults.length === 0) {
             this.showToast('🔍 لم يتم العثور على نتائج', 'error');
         } else {
-            this.showToast(`✅ تم العثور على ${this.currentResults.length} نتيجة`, 'success');
+            this.showToast('✅ تم العثور على ' + this.currentResults.length + ' نتيجة', 'success');
         }
     }
     
     displayResults() {
-        this.resultsCount.textContent = `(${this.currentResults.length})`;
+        this.resultsCount.textContent = '(' + this.currentResults.length + ')';
         this.resultsList.innerHTML = '';
         
         if (this.currentResults.length === 0) {
@@ -499,7 +483,12 @@ class AljoranyPro {
             this.resultsList.appendChild(card);
         });
         
-        this.resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => {
+            this.resultsContainer.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }, 100);
     }
     
     createResultCard(result) {
@@ -509,21 +498,26 @@ class AljoranyPro {
         const titleFields = result.matchedFields.slice(0, 3);
         const titleText = titleFields.map(f => f.value).join(' - ') || 'نتيجة بحث';
         
-        const fieldsHtml = [...result.matchedFields, ...result.otherFields]
-            .slice(0, 6)
-            .map(field => `
-                <div class="field-item">
-                    <div class="field-label">${field.key}</div>
-                    <div class="field-value" style="${field.highlight ? 'color: var(--accent);' : ''}">
-                        ${field.value}
-                    </div>
-                </div>
-            `).join('');
+        // عرض كامل السطر
+        const allFields = [...result.matchedFields, ...result.otherFields]
+            .filter(f => f.value && f.value.trim() !== '');
+        
+        const fieldsHtml = allFields.map(field => `
+            <div class="field-item ${field.highlight ? 'highlighted' : ''}">
+                <div class="field-label">${field.key}</div>
+                <div class="field-value">${this.escapeHtml(field.value)}</div>
+            </div>
+        `).join('');
+        
+        // preview للسطر الكامل
+        const fullRowPreview = result.fullRowText.length > 150 
+            ? result.fullRowText.substring(0, 150) + '...' 
+            : result.fullRowText;
         
         card.innerHTML = `
             <div class="result-header">
                 <div class="result-title">
-                    ${titleText}
+                    ${this.escapeHtml(titleText)}
                     <span class="result-match">${result.matchType}</span>
                 </div>
             </div>
@@ -531,6 +525,10 @@ class AljoranyPro {
                 <span>📄 ${result.fileName}</span>
                 <span>📊 صف ${result.rowNumber}</span>
                 <span>✓ ${result.matchedFields.length} تطابق</span>
+            </div>
+            <div class="full-row-preview" title="السطر الكامل - انقر للنسخ">
+                <strong>السطر الكامل:</strong><br>
+                ${this.escapeHtml(fullRowPreview)}
             </div>
             <div class="result-fields">
                 ${fieldsHtml}
@@ -552,16 +550,24 @@ class AljoranyPro {
         return card;
     }
     
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
     copyResult(result, cardElement) {
-        const textToCopy = Object.values(result.allFields).join(' | ');
+        const textToCopy = result.fullRowText;
         
         navigator.clipboard.writeText(textToCopy).then(() => {
             cardElement.classList.add('copied');
             setTimeout(() => cardElement.classList.remove('copied'), 1000);
-            this.showToast('✅ تم النسخ إلى الحافظة', 'success');
+            this.showToast('✅ تم نسخ السطر الكامل', 'success');
         }).catch(() => {
             const textArea = document.createElement('textarea');
             textArea.value = textToCopy;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
             document.body.appendChild(textArea);
             textArea.select();
             document.execCommand('copy');
@@ -569,19 +575,19 @@ class AljoranyPro {
             
             cardElement.classList.add('copied');
             setTimeout(() => cardElement.classList.remove('copied'), 1000);
-            this.showToast('✅ تم النسخ إلى الحافظة', 'success');
+            this.showToast('✅ تم نسخ السطر الكامل', 'success');
         });
     }
     
     copyAllResults() {
         if (this.currentResults.length === 0) return;
         
-        const allText = this.currentResults.map(r => 
-            Object.values(r.allFields).join(' | ')
-        ).join('\n');
+        const allText = this.currentResults.map(r => r.fullRowText).join('\n');
         
         navigator.clipboard.writeText(allText).then(() => {
-            this.showToast(`✅ تم نسخ ${this.currentResults.length} نتيجة`, 'success');
+            this.showToast('✅ تم نسخ ' + this.currentResults.length + ' سطر', 'success');
+        }).catch(() => {
+            this.showToast('❌ فشل النسخ', 'error');
         });
     }
     
@@ -595,6 +601,7 @@ class AljoranyPro {
             'اسم الملف': r.fileName,
             'رقم الصف': r.rowNumber,
             'نوع التطابق': r.matchType,
+            'السطر الكامل': r.fullRowText,
             ...r.allFields
         }));
         
@@ -603,7 +610,7 @@ class AljoranyPro {
         XLSX.utils.book_append_sheet(wb, ws, 'نتائج البحث');
         
         const timestamp = new Date().toISOString().slice(0, 10);
-        XLSX.writeFile(wb, `aljorany-results-${timestamp}.xlsx`);
+        XLSX.writeFile(wb, 'aljorany-results-' + timestamp + '.xlsx');
         
         this.showToast('📥 تم تصدير النتائج', 'success');
     }
@@ -617,14 +624,16 @@ class AljoranyPro {
         this.showToast('🗑️ تم مسح النتائج', 'success');
     }
     
-    showToast(message, type = 'success') {
+    showToast(message, type) {
         const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
+        toast.className = 'toast ' + type;
         toast.textContent = message;
         
         this.toastContainer.appendChild(toast);
         
-        setTimeout(() => toast.classList.add('show'), 10);
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
         
         setTimeout(() => {
             toast.classList.remove('show');
@@ -637,6 +646,6 @@ const app = new AljoranyPro();
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
-        .then(reg => console.log('SW registered'))
-        .catch(err => console.log('SW error:', err));
+        .then(reg => console.log('Service Worker registered'))
+        .catch(err => console.log('Service Worker error:', err));
 }
