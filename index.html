@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6366f1">
+    <title>Aljorany Pro - البحث المتقدم في Excel</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --accent: #10b981;
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --glass-bg: rgba(255, 255, 255, 0.12);
+            --glass-border: rgba(255, 255, 255, 0.25);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        
+        [data-theme="light"] {
+            --bg-gradient-start: #f8fafc;
+            --bg-gradient-end: #e2e8f0;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+        
+        .bg-shapes {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; overflow: hidden; pointer-events: none;
+        }
+        
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.4;
+            animation: float 20s infinite ease-in-out;
+        }
+        
+        .shape-1 {
+            width: 400px; height: 400px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            top: -10%; right: -10%;
+        }
+        
+        .shape-2 {
+            width: 300px; height: 300px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            bottom: -5%; left: -10%;
+            animation-delay: -5s;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            33% { transform: translate(30px, -30px) rotate(120deg) scale(1.1); }
+            66% { transform: translate(-20px, 20px) rotate(240deg) scale(0.9); }
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            margin-bottom: 10px;
+        }
+        
+        .brand { display: flex; align-items: center; gap: 12px; }
+        
+        .logo-icon {
+            width: 50px; height: 50px;
+            background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .brand-text h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .brand-text p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: -5px;
+        }
+        
+        .icon-btn {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .icon-btn:hover { transform: scale(1.1); background: rgba(255,255,255,0.2); }
+        
+        .stats-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .stat-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 15px 20px;
+            min-width: 120px;
+            flex: 1;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 25px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .upload-zone {
+            border: 2px dashed var(--glass-border);
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(16, 185, 129, 0.05);
+        }
+        
+        .upload-icon { font-size: 3rem; margin-bottom: 15px; display: block; }
+        .upload-text { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+        .upload-hint { font-size: 0.85rem; color: var(--text-muted); }
+        
+        .file-input { display: none; }
+        
+        .file-list {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .file-list.show { display: block; }
+        
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid var(--glass-border);
+        }
+        
+        .file-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .file-info { flex: 1; }
+        .file-name { font-weight: 600; font-size: 0.95rem; }
+        .file-meta { font-size: 0.8rem; color: var(--text-muted); }
+        
+        .file-remove {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .progress-container.show { display: block; }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #34d399);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .search-container { display: none; }
+        .search-container.show { display: block; }
+        
+        .search-box { position: relative; margin-bottom: 15px; }
+        
+        .search-input {
+            width: 100%;
+            padding: 18px 25px;
+            padding-left: 55px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid var(--glass-border);
+            border-radius: 15px;
+            font-family: inherit;
+            font-size: 1rem;
+            color: var(--text-primary);
+            outline: none;
+        }
+        
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.3rem;
+            color: var(--text-muted);
+        }
+        
+        .search-filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .filter-chip {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-chip:hover, .filter-chip.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        
+        .search-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+        
+        .search-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+        }
+        
+        .results-container { display: none; }
+        .results-container.show { display: block; }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        
+        .results-title { font-size: 1.2rem; font-weight: 700; }
+        .results-count { color: var(--accent); }
+        
+        .results-actions { display: flex; gap: 10px; }
+        
+        .action-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .action-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .result-card {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .result-card:hover {
+            transform: translateX(-5px);
+            border-color: var(--primary);
+        }
+        
+        .result-card.copied {
+            animation: pulse 0.5s ease;
+            border-color: var(--accent);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+        
+        .result-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            line-height: 1.5;
+        }
+        
+        .result-match {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent);
+            border-radius: 50px;
+            font-size: 0.75rem;
+            margin-right: 8px;
+        }
+        
+        .result-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+        
+        .result-fields {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--glass-border);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 8px;
+        }
+        
+        .field-item { display: flex; flex-direction: column; gap: 2px; }
+        .field-label { font-size: 0.75rem; color: var(--text-muted); }
+        .field-value { font-size: 0.9rem; font-weight: 600; }
+        
+        .copy-indicator {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .result-card:hover .copy-indicator { opacity: 1; }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        
+        .empty-icon { font-size: 4rem; margin-bottom: 20px; opacity: 0.5; }
+        .empty-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
+        
+        .toast-container {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .toast {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 16px 28px;
+            border-radius: 50px;
+            font-weight: 600;
+            box-shadow: var(--shadow);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s ease;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.success { background: rgba(16, 185, 129, 0.9); color: white; }
+        .toast.error { background: rgba(239, 68, 68, 0.9); color: white; }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px; height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            .brand-text h1 { font-size: 1.5rem; }
+            .stats-bar { gap: 10px; }
+            .stat-card { padding: 12px 15px; min-width: 100px; }
+            .glass-card { padding: 20px; }
+            .result-fields { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+    
+    <div class="container">
+        <header class="header">
+            <div class="brand">
+                <div class="logo-icon">📊</div>
+                <div class="brand-text">
+                    <h1>Aljorany</h1>
+                    <p>البحث المتقدم في Excel</p>
+                </div>
+            </div>
+            <button class="icon-btn" id="themeToggle" title="تبديل الوضع">🌙</button>
+        </header>
+        
+        <div class="stats-bar" id="statsBar" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="statFiles">0</div>
+                <div class="stat-label">ملفات</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statRows">0</div>
+                <div class="stat-label">صفوف</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statCols">0</div>
+                <div class="stat-label">أعمدة</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statResults">0</div>
+                <div class="stat-label">نتائج</div>
+            </div>
+        </div>
+        
+        <div class="glass-card">
+            <div class="card-header">
+                <div class="card-title">📁 استيراد الملفات</div>
+            </div>
+            
+            <div class="upload-zone" id="uploadZone">
+                <span class="upload-icon">📂</span>
+                <div class="upload-text">اسحب الملفات هنا أو انقر للاختيار</div>
+                <div class="upload-hint">يدعم: XLSX, XLS, XLSM, CSV</div>
+            </div>
+            
+            <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls,.xlsm,.csv" multiple>
+            
+            <div class="file-list" id="fileList"></div>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-header">
+                    <span>جاري المعالجة...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="glass-card search-container" id="searchContainer">
+            <div class="card-header">
+                <div class="card-title">🔍 البحث المتقدم</div>
+            </div>
+            
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="searchInput" 
+                       placeholder="أدخل الاسم الثلاثي أو أي كلمة للبحث..." autocomplete="off">
+            </div>
+            
+            <div class="search-filters">
+                <div class="filter-chip active" data-filter="all">الكل</div>
+                <div class="filter-chip" data-filter="exact">تطابق تام</div>
+                <div class="filter-chip" data-filter="partial">تطابق جزئي</div>
+            </div>
+            
+            <button class="search-btn" id="searchBtn">
+                <span>بحث</span>
+            </button>
+        </div>
+        
+        <div class="glass-card results-container" id="resultsContainer">
+            <div class="results-header">
+                <div class="results-title">
+                    النتائج <span class="results-count" id="resultsCount">(0)</span>
+                </div>
+                <div class="results-actions">
+                    <button class="action-btn" id="copyAllBtn">📋 نسخ الكل</button>
+                    <button class="action-btn" id="exportBtn">📥 تصدير</button>
+                    <button class="action-btn" id="clearResultsBtn">🗑️ مسح</button>
+                </div>
+            </div>
+            <div class="results-list" id="resultsList"></div>
+        </div>
+        
+        <div class="glass-card empty-state" id="emptyState">
+            <div class="empty-icon">📊</div>
+            <div class="empty-title">ابدأ رحلتك</div>
+            <div class="empty-text">استورد ملف Excel للبدء في البحث المتقدم</div>
+        </div>
+    </div>
+    
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
